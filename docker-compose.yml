@@ -1,6 +1,66 @@
 version: '3.8'
 
 services:
+  # Backend Flask API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: playalter_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-False}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+      - AGORA_APP_ID=${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
+      - N8N_HOST=http://n8n:5678
+      - N8N_API_KEY=${N8N_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite:///app/data/playalter.db
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    depends_on:
+      - redis
+      - n8n
+    networks:
+      - playalter_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Vite React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: playalter_frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - VITE_API_URL=http://backend:5000
+      - VITE_STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - VITE_AGORA_APP_ID=${AGORA_APP_ID}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - playalter_network
+    restart: unless-stopped
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
   n8n:
     image: n8nio/n8n:latest
     container_name: playalter_n8n
@@ -54,9 +114,14 @@ services:
       - playalter_network
 
 volumes:
+  backend_data:
+    driver: local
   n8n_data:
+    driver: local
   redis_data:
+    driver: local
   postgres_data:
+    driver: local
 
 networks:
   playalter_network:
