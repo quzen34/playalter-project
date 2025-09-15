@@ -28,12 +28,17 @@ FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 
 app.secret_key = FLASK_SECRET_KEY
 
+# Stripe Price Configuration
+DEFAULT_PRICE_ID = "price_1S7FP0C41pFAbJdXQMMjixCz"  # New Stripe price ID
+STRIPE_DEFAULT_PRICE = os.getenv("STRIPE_DEFAULT_PRICE", DEFAULT_PRICE_ID)
+
 # Initialize Stripe
 stripe.api_key = STRIPE_SECRET_KEY or "sk_test_placeholder"
 if STRIPE_SECRET_KEY and not STRIPE_SECRET_KEY.startswith("sk_"):
     logger.warning("Invalid Stripe API key format in .env")
 else:
     logger.info("Stripe API key configured")
+    logger.info(f"Default Stripe Price ID: {STRIPE_DEFAULT_PRICE}")
 
 class N8NService:
     """Service class for n8n integration"""
@@ -292,11 +297,13 @@ def create_checkout_session():
     """Enhanced checkout session creation"""
     try:
         data = request.get_json()
-        price_id = data.get('priceId')
+        price_id = data.get('priceId', STRIPE_DEFAULT_PRICE)  # Use default if not provided
         customer_email = data.get('email')
-        success_url = data.get('success_url', 'http://localhost:3000/payment-success')
-        cancel_url = data.get('cancel_url', 'http://localhost:3000/payment-cancel')
+        success_url = data.get('success_url', 'http://localhost:5173/payment-success')
+        cancel_url = data.get('cancel_url', 'http://localhost:5173/payment-cancel')
         mode = data.get('mode', 'subscription')
+        
+        logger.info(f"Creating checkout session with price ID: {price_id}")
         
         if not price_id:
             return jsonify({"error": "Price ID is required"}), 400
