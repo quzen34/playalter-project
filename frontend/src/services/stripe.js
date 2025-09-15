@@ -1,6 +1,7 @@
 import { loadStripe } from '@stripe/stripe-js';
+import httpService from './http.js';
 
-// Initialize Stripe (you'll need to set your publishable key)
+// Initialize Stripe with environment-based publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
 
 export const getStripe = () => stripePromise;
@@ -15,9 +16,19 @@ export const redirectToCheckout = async (sessionId) => {
 };
 
 export const createPaymentIntent = async (amount, currency = 'usd', metadata = {}) => {
-  // This would typically be done on the backend
-  // This is just a placeholder for the frontend structure
-  console.log('Creating payment intent:', { amount, currency, metadata });
+  try {
+    // Use the centralized HTTP service for API calls
+    return await httpService.createCheckoutSession({
+      amount,
+      currency,
+      metadata,
+      success_url: `${import.meta.env.VITE_FRONTEND_URL || 'https://www.playalter.com'}/payment-success`,
+      cancel_url: `${import.meta.env.VITE_FRONTEND_URL || 'https://www.playalter.com'}/payment-cancel`,
+    });
+  } catch (error) {
+    console.error('Payment intent creation failed:', error);
+    throw error;
+  }
 };
 
 export default {

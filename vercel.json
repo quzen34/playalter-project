@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "playalter",
-  "alias": ["playalter.vercel.app"],
+  "alias": ["www.playalter.com", "playalter.com", "playalter.vercel.app"],
   "builds": [
     {
       "src": "backend/app_enhanced.py",
@@ -53,7 +53,11 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "https://www.playalter.com"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -61,7 +65,28 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "value": "Content-Type, Authorization, X-Requested-With"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
         }
       ]
     }
@@ -70,7 +95,24 @@
     {
       "source": "/",
       "destination": "/app",
-      "permanent": false
+      "permanent": false,
+      "has": [
+        {
+          "type": "host",
+          "value": "www.playalter.com"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "destination": "https://www.playalter.com/$1",
+      "permanent": true,
+      "has": [
+        {
+          "type": "host",
+          "value": "playalter.com"
+        }
+      ]
     }
   ],
   "cleanUrls": true,

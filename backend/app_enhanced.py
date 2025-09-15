@@ -18,7 +18,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+
+# CORS configuration for production domain
+CORS(app, 
+     origins=[
+         "https://www.playalter.com",
+         "https://playalter.com", 
+         "http://localhost:5173",  # Development
+         "http://localhost:3000"   # Alternative dev port
+     ],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     supports_credentials=True
+)
 
 # Environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

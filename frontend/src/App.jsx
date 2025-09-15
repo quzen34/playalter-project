@@ -13,6 +13,7 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancel from './pages/PaymentCancel';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import DomainTest from './pages/DomainTest';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
               <Route path="/payment-cancel" element={<PaymentCancel />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/domain-test" element={<DomainTest />} />
             </Routes>
           </main>
           <Footer />
