@@ -5,7 +5,8 @@
       "Bash(git commit:*)",
       "Bash(git remote add:*)",
       "WebSearch",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(docker-compose build:*)"
     ],
     "deny": [],
     "ask": []

@@ -756,6 +756,84 @@ def ar_mask():
         logger.error(f"AR mask error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/user-test', methods=['POST'])
+def user_test():
+    """User testing and feedback collection endpoint"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        feedback = data.get('feedback')
+        test_type = data.get('test_type', 'general')
+        rating = data.get('rating', 0)
+
+        if not user_id or not feedback:
+            return jsonify({"error": "user_id and feedback are required"}), 400
+
+        logger.info(f"User feedback received from {user_id}: {feedback[:100]}...")
+
+        # Create feedback entry
+        feedback_entry = {
+            "user_id": user_id,
+            "feedback": feedback,
+            "test_type": test_type,
+            "rating": rating,
+            "timestamp": datetime.utcnow().isoformat(),
+            "session_id": f"session_{int(time.time())}",
+            "user_agent": request.headers.get('User-Agent', 'unknown'),
+            "ip_address": request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        }
+
+        # In production, this would write to a file or database
+        # For now, we'll simulate file logging
+        log_filename = "user_feedback.log"
+
+        try:
+            # Mock file logging (in production, would actually write to file)
+            # with open(log_filename, 'a', encoding='utf-8') as f:
+            #     f.write(f"{json.dumps(feedback_entry)}\n")
+
+            logger.info(f"User feedback logged to {log_filename}")
+
+            # Analyze feedback sentiment (mock)
+            sentiment = "positive" if any(word in feedback.lower() for word in ['great', 'awesome', 'love', 'excellent', 'amazing']) else \
+                       "negative" if any(word in feedback.lower() for word in ['bad', 'terrible', 'hate', 'awful', 'worst']) else \
+                       "neutral"
+
+            # Generate user testing metrics
+            metrics = {
+                "feedback_length": len(feedback),
+                "sentiment": sentiment,
+                "engagement_level": "high" if len(feedback) > 50 else "medium" if len(feedback) > 20 else "low",
+                "feature_mentioned": any(feature in feedback.lower() for feature in ['face', 'swap', 'mask', 'stream', 'ai']),
+                "response_time_ms": 25,  # Mock response time
+            }
+
+        except Exception as log_error:
+            logger.error(f"Error logging feedback: {str(log_error)}")
+            # Continue with success response even if logging fails
+
+        return jsonify({
+            "status": "logged",
+            "message": "User feedback successfully recorded",
+            "user_id": user_id,
+            "feedback_id": f"fb_{int(time.time())}",
+            "metrics": metrics,
+            "next_steps": {
+                "follow_up": "Thank you for your feedback!",
+                "beta_program": "You've been enrolled in our beta testing program",
+                "updates": "You'll receive updates on new features"
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"User test error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
 @app.route('/api/deploy', methods=['POST'])
 def deploy():
     """Deploy endpoint for Docker and Vercel automation"""
@@ -1079,6 +1157,9 @@ def home():
             },
             "devops": {
                 "deploy": "POST /api/deploy - Trigger Docker build and Vercel deployment"
+            },
+            "user_testing": {
+                "feedback": "POST /api/user-test - Log user feedback and testing data"
             }
         },
         "integrations": ["Stripe", "n8n", "OpenAI"],

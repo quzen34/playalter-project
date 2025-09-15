@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "name": "playalter",
+  "alias": ["playalter.vercel.app"],
+  "builds": [
+    {
+      "src": "backend/app_enhanced.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app_enhanced.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/dist/$1"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "REPLICATE_API_TOKEN": "@replicate_api_token",
+      "AGORA_APP_ID": "@agora_app_id",
+      "AGORA_APP_CERTIFICATE": "@agora_app_certificate",
+      "STRIPE_SECRET_KEY": "@stripe_secret_key",
+      "STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
+      "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+      "OPENAI_API_KEY": "@openai_api_key",
+      "N8N_HOST": "@n8n_host",
+      "N8N_API_KEY": "@n8n_api_key"
+    }
+  },
+  "functions": {
+    "backend/app_enhanced.py": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/app",
+      "permanent": false
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "github": {
+    "silent": true
+  }
+}
