@@ -1,0 +1,210 @@
+{
+  "name": "AR Mask Processing Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ar-mask-processing",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-ar-mask",
+      "name": "Webhook - AR Mask",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "ar-mask-processing"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "image",
+              "value": "={{$json.image}}"
+            },
+            {
+              "name": "mask_type",
+              "value": "={{$json.mask_type}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$json.user_id}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-ar-data",
+      "name": "Extract AR Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.ar-mask-service.com/v1/apply-mask",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.AR_MASK_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{$json.image}}"
+            },
+            {
+              "name": "mask_type",
+              "value": "={{$json.mask_type}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$json.user_id}}"
+            },
+            {
+              "name": "quality",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-ar-mask-api",
+      "name": "Call AR Mask API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/n8n/callback/ar-mask",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Extract AR Data').item.json.user_id}}"
+            },
+            {
+              "name": "result_image_url",
+              "value": "={{$json.result_image_url}}"
+            },
+            {
+              "name": "mask_type",
+              "value": "={{$('Extract AR Data').item.json.mask_type}}"
+            },
+            {
+              "name": "status",
+              "value": "={{$json.status}}"
+            },
+            {
+              "name": "processing_time",
+              "value": "={{$json.processing_time}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-backend-ar",
+      "name": "Notify Backend AR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "status": "success",
+          "message": "AR mask processing completed",
+          "result_url": "={{$('Call AR Mask API').item.json.result_image_url}}",
+          "mask_type": "={{$('Extract AR Data').item.json.mask_type}}",
+          "processing_time": "={{$('Call AR Mask API').item.json.processing_time}}"
+        }
+      },
+      "id": "respond-ar-webhook",
+      "name": "Respond AR Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - AR Mask": {
+      "main": [
+        [
+          {
+            "node": "Extract AR Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract AR Data": {
+      "main": [
+        [
+          {
+            "node": "Call AR Mask API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call AR Mask API": {
+      "main": [
+        [
+          {
+            "node": "Notify Backend AR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Backend AR": {
+      "main": [
+        [
+          {
+            "node": "Respond AR Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "ar-mask-workflow",
+  "tags": ["PLAYALTER", "AR", "Mask", "AI"]
+}

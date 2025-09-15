@@ -1,0 +1,201 @@
+{
+  "name": "Face Swap Processing Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "face-swap-processing",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-face-swap",
+      "name": "Webhook - Face Swap",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "face-swap-processing"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "source_image",
+              "value": "={{$json.source_image}}"
+            },
+            {
+              "name": "target_image", 
+              "value": "={{$json.target_image}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$json.user_id}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-data",
+      "name": "Extract Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.faceswap-service.com/v1/swap",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.FACE_SWAP_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source_image_url",
+              "value": "={{$json.source_image}}"
+            },
+            {
+              "name": "target_image_url",
+              "value": "={{$json.target_image}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$json.user_id}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "call-face-swap-api",
+      "name": "Call Face Swap API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/n8n/callback/face-swap",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Extract Data').item.json.user_id}}"
+            },
+            {
+              "name": "result_image_url",
+              "value": "={{$json.result_image_url}}"
+            },
+            {
+              "name": "status",
+              "value": "={{$json.status}}"
+            },
+            {
+              "name": "processing_time",
+              "value": "={{$json.processing_time}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-backend",
+      "name": "Notify Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "status": "success",
+          "message": "Face swap processing completed",
+          "result_url": "={{$('Call Face Swap API').item.json.result_image_url}}",
+          "processing_time": "={{$('Call Face Swap API').item.json.processing_time}}"
+        }
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Face Swap": {
+      "main": [
+        [
+          {
+            "node": "Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Call Face Swap API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Face Swap API": {
+      "main": [
+        [
+          {
+            "node": "Notify Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Backend": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "face-swap-workflow",
+  "tags": ["PLAYALTER", "FaceSwap", "AI"]
+}

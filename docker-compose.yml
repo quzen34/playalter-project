@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: playalter_n8n
+    restart: unless-stopped
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=playalter123
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+      - N8N_SECURE_COOKIE=false
+      - N8N_LOG_LEVEL=info
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+      - ./n8n/credentials:/home/node/.n8n/credentials
+    networks:
+      - playalter_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: playalter_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - playalter_network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: playalter_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=playalter
+      - POSTGRES_USER=playalter
+      - POSTGRES_PASSWORD=playalter123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - playalter_network
+
+volumes:
+  n8n_data:
+  redis_data:
+  postgres_data:
+
+networks:
+  playalter_network:
+    driver: bridge

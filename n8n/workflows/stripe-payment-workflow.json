@@ -1,0 +1,208 @@
+{
+  "name": "Stripe Payment Processing Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/stripe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-payment-succeeded",
+      "name": "Webhook - Payment Succeeded",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 200],
+      "webhookId": "payment-succeeded"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "customer_id",
+              "value": "={{$json.data.object.customer}}"
+            },
+            {
+              "name": "payment_intent_id",
+              "value": "={{$json.data.object.id}}"
+            },
+            {
+              "name": "amount",
+              "value": "={{$json.data.object.amount}}"
+            },
+            {
+              "name": "currency",
+              "value": "={{$json.data.object.currency}}"
+            },
+            {
+              "name": "event_type",
+              "value": "={{$json.event_type}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-payment-data",
+      "name": "Extract Payment Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.stripe.com/v1/customers/{{$json.customer_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.STRIPE_SECRET_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-customer-details",
+      "name": "Get Customer Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/n8n/callback/payment-processed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "customer_id",
+              "value": "={{$('Extract Payment Data').item.json.customer_id}}"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{$json.email}}"
+            },
+            {
+              "name": "payment_intent_id",
+              "value": "={{$('Extract Payment Data').item.json.payment_intent_id}}"
+            },
+            {
+              "name": "amount",
+              "value": "={{$('Extract Payment Data').item.json.amount}}"
+            },
+            {
+              "name": "currency",
+              "value": "={{$('Extract Payment Data').item.json.currency}}"
+            },
+            {
+              "name": "status",
+              "value": "succeeded"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-backend-payment",
+      "name": "Notify Backend Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "to": "={{$('Get Customer Details').item.json.email}}",
+        "subject": "Payment Confirmation - PLAYALTER",
+        "message": "Dear {{$('Get Customer Details').item.json.name || 'Customer'}},\n\nThank you for your payment! Your transaction has been successfully processed.\n\nTransaction Details:\n- Amount: ${{($('Extract Payment Data').item.json.amount / 100).toFixed(2)}} {{$('Extract Payment Data').item.json.currency.toUpperCase()}}\n- Payment ID: {{$('Extract Payment Data').item.json.payment_intent_id}}\n- Date: {{new Date().toLocaleDateString()}}\n\nYou can now enjoy all PLAYALTER premium features including:\n- Advanced Face Swap\n- AR Masks\n- Live Streaming\n- Priority Support\n\nBest regards,\nPLAYALTER Team"
+      },
+      "id": "send-confirmation-email",
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "status": "processed",
+          "message": "Payment processed successfully",
+          "customer_notified": true
+        }
+      },
+      "id": "respond-payment-webhook",
+      "name": "Respond Payment Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 200]
+    }
+  ],
+  "connections": {
+    "Webhook - Payment Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Extract Payment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Payment Data": {
+      "main": [
+        [
+          {
+            "node": "Get Customer Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Customer Details": {
+      "main": [
+        [
+          {
+            "node": "Notify Backend Payment",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Backend Payment": {
+      "main": [
+        [
+          {
+            "node": "Respond Payment Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "stripe-payment-workflow",
+  "tags": ["PLAYALTER", "Stripe", "Payment", "Email"]
+}
