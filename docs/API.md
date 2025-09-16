@@ -284,6 +284,69 @@ Content-Type: application/json
 }
 ```
 
+### Grok (XAI) Integration
+
+#### Chat Completion
+
+```http
+POST /api/grok/chat
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "messages": [
+    {"role": "system", "content": "You are Grok, a helpful AI assistant."},
+    {"role": "user", "content": "Explain quantum computing in simple terms"}
+  ],
+  "model": "grok-beta",
+  "parameters": {
+    "max_tokens": 200,
+    "temperature": 0.8
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": "grok_chat_001",
+  "object": "chat.completion",
+  "model": "grok-beta",
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Quantum computing is like having a super-smart computer..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 45,
+    "completion_tokens": 150,
+    "total_tokens": 195
+  }
+}
+```
+
+#### Advanced Reasoning
+
+```http
+POST /api/grok/reason
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "context": "A user is trying to learn about AI platforms",
+  "question": "What's the best approach to integrate multiple AI services?",
+  "reasoning_depth": "detailed"
+}
+```
+
 ### Replicate Integration
 
 #### Face Swap

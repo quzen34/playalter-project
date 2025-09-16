@@ -35,6 +35,9 @@ CORS(app,
 
 # Environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROK_API_KEY = os.getenv("GROK_API_KEY")
+GROK_API_BASE = os.getenv("GROK_API_BASE", "https://api.x.ai/v1")
+GROK_MODEL = os.getenv("GROK_MODEL", "grok-beta")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -322,7 +325,8 @@ def health_check():
         "integrations": {
             "stripe": "connected" if STRIPE_SECRET_KEY else "not_configured",
             "n8n": n8n_status,
-            "openai": "configured" if OPENAI_API_KEY else "not_configured"
+            "openai": "configured" if OPENAI_API_KEY else "not_configured",
+            "grok": "configured" if GROK_API_KEY else "not_configured"
         },
         "timestamp": datetime.utcnow().isoformat()
     }), 200
@@ -1146,6 +1150,170 @@ def ai_agents():
             "timestamp": datetime.utcnow().isoformat()
         }), 500
 
+@app.route('/api/grok/chat', methods=['POST'])
+def grok_chat():
+    """Grok AI chat completion endpoint"""
+    try:
+        if not GROK_API_KEY:
+            return jsonify({
+                "status": "error",
+                "message": "Grok API key not configured"
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                "status": "error", 
+                "message": "Request body is required"
+            }), 400
+        
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({
+                "status": "error",
+                "message": "Messages array is required"
+            }), 400
+        
+        # Prepare request to Grok API
+        payload = {
+            "messages": messages,
+            "model": data.get('model', GROK_MODEL),
+            "max_tokens": data.get('max_tokens', 150),
+            "temperature": data.get('temperature', 0.7)
+        }
+        
+        # Call Grok API
+        headers = {
+            "Authorization": f"Bearer {GROK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            f"{GROK_API_BASE}/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            logger.info("Grok chat completion successful")
+            return jsonify({
+                "status": "success",
+                "result": result,
+                "timestamp": datetime.utcnow().isoformat()
+            }), 200
+        else:
+            logger.error(f"Grok API error: {response.status_code} - {response.text}")
+            return jsonify({
+                "status": "error",
+                "message": f"Grok API error: {response.status_code}",
+                "details": response.text
+            }), response.status_code
+            
+    except Exception as e:
+        logger.error(f"Grok chat error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+@app.route('/api/grok/reason', methods=['POST'])
+def grok_reason():
+    """Grok AI advanced reasoning endpoint"""
+    try:
+        if not GROK_API_KEY:
+            return jsonify({
+                "status": "error",
+                "message": "Grok API key not configured"
+            }), 500
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                "status": "error",
+                "message": "Request body is required"
+            }), 400
+        
+        context = data.get('context', '')
+        question = data.get('question', '')
+        
+        if not question:
+            return jsonify({
+                "status": "error",
+                "message": "Question is required"
+            }), 400
+        
+        # Construct reasoning prompt
+        messages = [
+            {
+                "role": "system", 
+                "content": "You are Grok, an advanced AI reasoning assistant. Provide detailed, logical analysis with step-by-step reasoning."
+            }
+        ]
+        
+        if context:
+            messages.append({
+                "role": "user",
+                "content": f"Context: {context}\n\nQuestion: {question}\n\nPlease provide detailed reasoning and analysis."
+            })
+        else:
+            messages.append({
+                "role": "user",
+                "content": f"Question: {question}\n\nPlease provide detailed reasoning and analysis."
+            })
+        
+        # Prepare request to Grok API
+        payload = {
+            "messages": messages,
+            "model": data.get('model', GROK_MODEL),
+            "max_tokens": data.get('max_tokens', 300),
+            "temperature": data.get('temperature', 0.8)
+        }
+        
+        # Call Grok API
+        headers = {
+            "Authorization": f"Bearer {GROK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            f"{GROK_API_BASE}/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=45
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            reasoning = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+            
+            logger.info("Grok reasoning completion successful")
+            return jsonify({
+                "status": "success",
+                "context": context,
+                "question": question,
+                "reasoning": reasoning,
+                "full_response": result,
+                "timestamp": datetime.utcnow().isoformat()
+            }), 200
+        else:
+            logger.error(f"Grok API error: {response.status_code} - {response.text}")
+            return jsonify({
+                "status": "error",
+                "message": f"Grok API error: {response.status_code}",
+                "details": response.text
+            }), response.status_code
+            
+    except Exception as e:
+        logger.error(f"Grok reasoning error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
 @app.route('/', methods=['GET'])
 def home():
     """API home with comprehensive endpoint documentation"""
@@ -1174,6 +1342,10 @@ def home():
                 "live_stream": "POST /api/live-stream - Generate Agora RTM stream token",
                 "ai_agents": "GET/POST /api/ai-agents - AI Agent operations (CrewAI/LangChain)"
             },
+            "grok_ai": {
+                "chat": "POST /api/grok/chat - Grok AI chat completion",
+                "reason": "POST /api/grok/reason - Advanced AI reasoning with context"
+            },
             "devops": {
                 "deploy": "POST /api/deploy - Trigger Docker build and Vercel deployment"
             },
@@ -1181,7 +1353,7 @@ def home():
                 "feedback": "POST /api/user-test - Log user feedback and testing data"
             }
         },
-        "integrations": ["Stripe", "n8n", "OpenAI"],
+        "integrations": ["Stripe", "n8n", "OpenAI", "Grok (XAI)", "Replicate", "Agora"],
         "timestamp": datetime.utcnow().isoformat()
     }), 200
 
