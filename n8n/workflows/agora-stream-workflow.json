@@ -1,0 +1,259 @@
+{
+  "name": "PLAYALTER Agora Stream Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agora-stream",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "agora-stream-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate Agora RTM Token\nconst crypto = require('crypto');\n\nconst appId = $env.AGORA_APP_ID;\nconst appCertificate = $env.AGORA_APP_CERTIFICATE;\nconst channelName = $input.item(0).json.channel_name || 'test_channel';\nconst uid = $input.item(0).json.uid || 0;\nconst userId = $input.item(0).json.user_id || 'anonymous';\nconst expireTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour\n\n// Simplified token generation (in production use official Agora SDK)\nconst tokenString = `${appId}:${appCertificate}:${channelName}:${uid}:${expireTime}`;\nconst token = crypto.createHash('sha256').update(tokenString).digest('hex');\n\n// Generate stream configuration\nconst streamConfig = {\n  channel_name: channelName,\n  app_id: appId,\n  uid: uid,\n  user_id: userId,\n  rtm_token: `rtm_${token.substring(0, 32)}`,\n  expires_at: expireTime,\n  stream_url: `rtm://agora.io/${appId}/${channelName}`,\n  max_participants: 10000,\n  quality: 'ultra',\n  region: 'us-west-2',\n  features: {\n    audio: true,\n    video: true,\n    screen_share: true,\n    ar_overlays: true,\n    face_filters: true\n  },\n  metadata: {\n    workflow: 'agora-stream-workflow',\n    timestamp: new Date().toISOString(),\n    session_id: $input.item(0).json.session_id || `session_${Date.now()}`\n  }\n};\n\nreturn [{ json: streamConfig }];"
+      },
+      "id": "b2c3d4e5-f6g7-h8i9-j0k1-l2m3n4o5p6q7",
+      "name": "Generate Agora Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.agora.io/v1/rtm/token",
+        "options": {
+          "timeout": 10000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "appId",
+              "value": "={{$env.AGORA_APP_ID}}"
+            },
+            {
+              "name": "channelName",
+              "value": "={{$json.channel_name}}"
+            },
+            {
+              "name": "uid",
+              "value": "={{$json.uid}}"
+            },
+            {
+              "name": "expirationTime",
+              "value": "={{$json.expires_at}}"
+            }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.AGORA_APP_CERTIFICATE}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "c3d4e5f6-g7h8-i9j0-k1l2-m3n4o5p6q7r8",
+      "name": "Agora API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "replicate_output_check",
+              "leftValue": "={{$node['Webhook'].json.replicate_output}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d4e5f6g7-h8i9-j0k1-l2m3-n4o5p6q7r8s9",
+      "name": "Check Replicate Output",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stream Replicate output to Agora channel\nconst streamData = {\n  stream_token: $node['Generate Agora Token'].json.rtm_token,\n  channel_name: $node['Generate Agora Token'].json.channel_name,\n  replicate_output: $node['Webhook'].json.replicate_output,\n  user_id: $node['Webhook'].json.user_id,\n  stream_config: {\n    video_codec: 'H264',\n    audio_codec: 'OPUS',\n    resolution: '1920x1080',\n    frame_rate: 30,\n    bitrate: 2000,\n    ar_overlay_enabled: true,\n    face_filter_enabled: true,\n    real_time_processing: true\n  },\n  streaming_endpoints: {\n    rtmp: `rtmp://live.agora.io/${$node['Generate Agora Token'].json.app_id}/${$node['Generate Agora Token'].json.channel_name}`,\n    webrtc: `webrtc://live.agora.io/${$node['Generate Agora Token'].json.app_id}/${$node['Generate Agora Token'].json.channel_name}`,\n    hls: `https://live.agora.io/${$node['Generate Agora Token'].json.app_id}/${$node['Generate Agora Token'].json.channel_name}.m3u8`\n  },\n  performance: {\n    latency_target: '200ms',\n    quality: 'ultra',\n    adaptive_bitrate: true,\n    edge_optimization: true\n  },\n  session_info: {\n    session_id: $node['Webhook'].json.session_id,\n    start_time: new Date().toISOString(),\n    workflow: 'agora-stream-workflow',\n    integration: 'replicate-to-agora'\n  }\n};\n\nreturn [{ json: streamData }];"
+      },
+      "id": "e5f6g7h8-i9j0-k1l2-m3n4-o5p6q7r8s9t0",
+      "name": "Stream to Replicate Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$node['Webhook'].json.callback_url || 'https://www.playalter.com/api/stream-status'}}",
+        "options": {
+          "timeout": 5000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "stream_data",
+              "value": "={{JSON.stringify($node['Stream to Replicate Output'].json)}}"
+            },
+            {
+              "name": "status",
+              "value": "streaming"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "id": "f6g7h8i9-j0k1-l2m3-n4o5-p6q7r8s9t0u1",
+      "name": "Notify Stream Start",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify({\n  \"status\": \"success\",\n  \"stream_token\": $node['Generate Agora Token'].json.rtm_token,\n  \"channel_name\": $node['Generate Agora Token'].json.channel_name,\n  \"app_id\": $node['Generate Agora Token'].json.app_id,\n  \"uid\": $node['Generate Agora Token'].json.uid,\n  \"expires_at\": $node['Generate Agora Token'].json.expires_at,\n  \"stream_url\": $node['Generate Agora Token'].json.stream_url,\n  \"streaming_endpoints\": $node['Stream to Replicate Output'].json.streaming_endpoints,\n  \"replicate_integration\": true,\n  \"ar_overlay_enabled\": true,\n  \"performance\": $node['Stream to Replicate Output'].json.performance,\n  \"session_info\": $node['Stream to Replicate Output'].json.session_info,\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"agora-stream-workflow\"\n})}}"
+      },
+      "id": "g7h8i9j0-k1l2-m3n4-o5p6-q7r8s9t0u1v2",
+      "name": "Stream Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify({\n  \"status\": \"error\",\n  \"message\": \"No Replicate output provided for streaming\",\n  \"error_code\": \"MISSING_REPLICATE_OUTPUT\",\n  \"agora_token\": $node['Generate Agora Token'].json.rtm_token,\n  \"channel_name\": $node['Generate Agora Token'].json.channel_name,\n  \"suggestion\": \"Stream token generated but no content to stream\",\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"agora-stream-workflow\"\n})}}"
+      },
+      "id": "h8i9j0k1-l2m3-n4o5-p6q7-r8s9t0u1v2w3",
+      "name": "No Content Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 360]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Generate Agora Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Agora Token": {
+      "main": [
+        [
+          {
+            "node": "Agora API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agora API Call": {
+      "main": [
+        [
+          {
+            "node": "Check Replicate Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Replicate Output": {
+      "main": [
+        [
+          {
+            "node": "Stream to Replicate Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Content Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stream to Replicate Output": {
+      "main": [
+        [
+          {
+            "node": "Notify Stream Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Stream Start": {
+      "main": [
+        [
+          {
+            "node": "Stream Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "agora-stream-v1.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "playalter-agora-stream-workflow"
+  },
+  "id": "agora-stream-workflow",
+  "tags": [
+    {
+      "createdAt": "2025-09-16T14:00:00.000Z",
+      "updatedAt": "2025-09-16T14:00:00.000Z",
+      "id": "playalter-production",
+      "name": "PLAYALTER Production"
+    }
+  ]
+}

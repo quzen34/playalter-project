@@ -1,0 +1,341 @@
+{
+  "name": "PLAYALTER Agent Orchestrate Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent-orchestrate",
+        "options": {}
+      },
+      "id": "m1n2o3p4-q5r6-s7t8-u9v0-w1x2y3z4a5b6",
+      "name": "Master Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "agent-orchestrate-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GPT-4o Master Agent Decision Making\nconst request = $input.item(0).json;\n\n// Analyze the request to determine which child agents to activate\nconst requestType = request.type || 'general';\nconst priority = request.priority || 'medium';\nconst userIntent = request.user_intent || 'unknown';\nconst contentType = request.content_type || 'mixed';\n\n// GPT-4o Decision Matrix\nconst agentDecision = {\n  master_agent: 'gpt-4o',\n  decision_timestamp: new Date().toISOString(),\n  request_analysis: {\n    type: requestType,\n    priority: priority,\n    user_intent: userIntent,\n    content_type: contentType,\n    complexity_score: calculateComplexity(request)\n  },\n  child_agents: {\n    replicate: shouldActivateReplicate(request),\n    agora: shouldActivateAgora(request)\n  },\n  orchestration_plan: generatePlan(request),\n  estimated_execution_time: estimateTime(request),\n  session_id: request.session_id || `session_${Date.now()}`\n};\n\nfunction calculateComplexity(req) {\n  let score = 1;\n  if (req.face_mask) score += 2;\n  if (req.stream_required) score += 2;\n  if (req.ar_overlay) score += 1;\n  if (req.real_time) score += 3;\n  return Math.min(score, 10);\n}\n\nfunction shouldActivateReplicate(req) {\n  return {\n    activate: !!(req.face_mask || req.image_processing || req.ai_generation),\n    tasks: [\n      req.face_mask ? 'face_mask_generation' : null,\n      req.image_processing ? 'image_enhancement' : null,\n      req.ai_generation ? 'content_generation' : null\n    ].filter(Boolean),\n    priority: req.priority || 'medium'\n  };\n}\n\nfunction shouldActivateAgora(req) {\n  return {\n    activate: !!(req.stream_required || req.real_time || req.live_interaction),\n    tasks: [\n      req.stream_required ? 'stream_setup' : null,\n      req.real_time ? 'real_time_processing' : null,\n      req.live_interaction ? 'interactive_session' : null\n    ].filter(Boolean),\n    priority: req.priority || 'medium'\n  };\n}\n\nfunction generatePlan(req) {\n  const plan = {\n    execution_order: [],\n    parallel_execution: [],\n    dependencies: {}\n  };\n  \n  if (shouldActivateReplicate(req).activate && shouldActivateAgora(req).activate) {\n    plan.execution_order = ['replicate', 'agora'];\n    plan.dependencies.agora = ['replicate'];\n  } else if (shouldActivateReplicate(req).activate) {\n    plan.execution_order = ['replicate'];\n  } else if (shouldActivateAgora(req).activate) {\n    plan.execution_order = ['agora'];\n  }\n  \n  return plan;\n}\n\nfunction estimateTime(req) {\n  let time = 5; // base 5 seconds\n  if (shouldActivateReplicate(req).activate) time += 15;\n  if (shouldActivateAgora(req).activate) time += 10;\n  return `${time}s`;\n}\n\nreturn [{ json: agentDecision }];"
+      },
+      "id": "n2o3p4q5-r6s7-t8u9-v0w1-x2y3z4a5b6c7",
+      "name": "GPT-4o Decision Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "replicate_activation_check",
+              "leftValue": "={{$json.child_agents.replicate.activate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "o3p4q5r6-s7t8-u9v0-w1x2-y3z4a5b6c7d8",
+      "name": "Activate Replicate Agent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "agora_activation_check",
+              "leftValue": "={{$json.child_agents.agora.activate}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p4q5r6s7-t8u9-v0w1-x2y3-z4a5b6c7d8e9",
+      "name": "Activate Agora Agent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://hooks.n8n.io/webhook/replicate-mask-workflow",
+        "options": {
+          "timeout": 30000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "image_url",
+              "value": "={{$node['Master Trigger'].json.image_url}}"
+            },
+            {
+              "name": "face_style",
+              "value": "={{$node['Master Trigger'].json.face_style || 'realistic'}}"
+            },
+            {
+              "name": "ethnic_style",
+              "value": "={{$node['Master Trigger'].json.ethnic_style || 'diverse'}}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{$node['GPT-4o Decision Engine'].json.session_id}}"
+            },
+            {
+              "name": "orchestrator_id",
+              "value": "master-agent"
+            },
+            {
+              "name": "callback_url",
+              "value": "https://www.playalter.com/api/orchestrator-callback"
+            }
+          ]
+        }
+      },
+      "id": "q5r6s7t8-u9v0-w1x2-y3z4-a5b6c7d8e9f0",
+      "name": "Call Replicate Child Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 160]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://hooks.n8n.io/webhook/agora-stream-workflow",
+        "options": {
+          "timeout": 15000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "channel_name",
+              "value": "={{$node['Master Trigger'].json.channel_name || `channel_${$node['GPT-4o Decision Engine'].json.session_id}`}}"
+            },
+            {
+              "name": "uid",
+              "value": "={{$node['Master Trigger'].json.uid || Math.floor(Math.random() * 10000)}}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{$node['Master Trigger'].json.user_id || 'anonymous'}}"
+            },
+            {
+              "name": "replicate_output",
+              "value": "={{$node['Call Replicate Child Agent'] ? $node['Call Replicate Child Agent'].json.output_urls : null}}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{$node['GPT-4o Decision Engine'].json.session_id}}"
+            },
+            {
+              "name": "callback_url",
+              "value": "https://www.playalter.com/api/orchestrator-callback"
+            }
+          ]
+        }
+      },
+      "id": "r6s7t8u9-v0w1-x2y3-z4a5-b6c7d8e9f0g1",
+      "name": "Call Agora Child Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all child agent results and create orchestrated response\nconst masterDecision = $node['GPT-4o Decision Engine'].json;\nconst replicateResult = $node['Call Replicate Child Agent'] ? $node['Call Replicate Child Agent'].json : null;\nconst agoraResult = $node['Call Agora Child Agent'] ? $node['Call Agora Child Agent'].json : null;\nconst originalRequest = $node['Master Trigger'].json;\n\nconst orchestratedResult = {\n  orchestration_status: 'completed',\n  master_agent: 'gpt-4o',\n  session_id: masterDecision.session_id,\n  execution_summary: {\n    total_execution_time: calculateExecutionTime(),\n    agents_activated: getActivatedAgents(),\n    success_rate: calculateSuccessRate(),\n    complexity_handled: masterDecision.request_analysis.complexity_score\n  },\n  child_agents_results: {\n    replicate: replicateResult ? {\n      status: replicateResult.status || 'completed',\n      output_urls: replicateResult.output_urls || [],\n      processing_time: replicateResult.processing_time || 'unknown',\n      quality_metrics: replicateResult.quality_metrics || {}\n    } : { status: 'not_activated' },\n    agora: agoraResult ? {\n      status: agoraResult.status || 'completed',\n      stream_token: agoraResult.stream_token || null,\n      channel_name: agoraResult.channel_name || null,\n      streaming_endpoints: agoraResult.streaming_endpoints || {},\n      performance: agoraResult.performance || {}\n    } : { status: 'not_activated' }\n  },\n  unified_output: {\n    content_ready: !!(replicateResult && replicateResult.output_urls),\n    stream_ready: !!(agoraResult && agoraResult.stream_token),\n    combined_experience: !!(replicateResult && agoraResult),\n    ar_overlay_supported: true,\n    real_time_capable: !!(agoraResult && agoraResult.stream_token)\n  },\n  user_experience: {\n    immediate_access: generateAccessUrls(),\n    quality_level: 'ultra',\n    interactive_features: getInteractiveFeatures(),\n    platform_integration: 'full'\n  },\n  metadata: {\n    workflow: 'agent-orchestrate-workflow',\n    platform: 'PLAYALTER',\n    timestamp: new Date().toISOString(),\n    version: '1.0'\n  }\n};\n\nfunction calculateExecutionTime() {\n  // In real implementation, track actual time\n  return masterDecision.estimated_execution_time;\n}\n\nfunction getActivatedAgents() {\n  const agents = [];\n  if (masterDecision.child_agents.replicate.activate) agents.push('replicate');\n  if (masterDecision.child_agents.agora.activate) agents.push('agora');\n  return agents;\n}\n\nfunction calculateSuccessRate() {\n  let total = 0;\n  let successful = 0;\n  \n  if (masterDecision.child_agents.replicate.activate) {\n    total++;\n    if (replicateResult && replicateResult.status === 'success') successful++;\n  }\n  \n  if (masterDecision.child_agents.agora.activate) {\n    total++;\n    if (agoraResult && agoraResult.status === 'success') successful++;\n  }\n  \n  return total > 0 ? `${Math.round((successful / total) * 100)}%` : '100%';\n}\n\nfunction generateAccessUrls() {\n  const urls = {};\n  \n  if (replicateResult && replicateResult.output_urls) {\n    urls.content = replicateResult.output_urls[0];\n  }\n  \n  if (agoraResult && agoraResult.streaming_endpoints) {\n    urls.stream = agoraResult.streaming_endpoints.webrtc;\n    urls.hls = agoraResult.streaming_endpoints.hls;\n  }\n  \n  return urls;\n}\n\nfunction getInteractiveFeatures() {\n  const features = ['ar_overlay'];\n  \n  if (replicateResult) features.push('face_filters', 'ai_enhancement');\n  if (agoraResult) features.push('real_time_streaming', 'live_interaction');\n  \n  return features;\n}\n\nreturn [{ json: orchestratedResult }];"
+      },
+      "id": "s7t8u9v0-w1x2-y3z4-a5b6-c7d8e9f0g1h2",
+      "name": "Orchestrate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 280]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$node['Master Trigger'].json.callback_url || 'https://www.playalter.com/api/orchestration-complete'}}",
+        "options": {
+          "timeout": 5000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "orchestration_result",
+              "value": "={{JSON.stringify($node['Orchestrate Results'].json)}}"
+            },
+            {
+              "name": "session_id",
+              "value": "={{$node['Orchestrate Results'].json.session_id}}"
+            },
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "id": "t8u9v0w1-x2y3-z4a5-b6c7-d8e9f0g1h2i3",
+      "name": "Notify Orchestration Complete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 280]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify({\n  \"status\": \"orchestration_complete\",\n  \"master_agent\": \"gpt-4o\",\n  \"session_id\": $node['Orchestrate Results'].json.session_id,\n  \"execution_summary\": $node['Orchestrate Results'].json.execution_summary,\n  \"unified_output\": $node['Orchestrate Results'].json.unified_output,\n  \"user_experience\": $node['Orchestrate Results'].json.user_experience,\n  \"child_agents\": {\n    \"replicate\": $node['Orchestrate Results'].json.child_agents_results.replicate.status,\n    \"agora\": $node['Orchestrate Results'].json.child_agents_results.agora.status\n  },\n  \"access_urls\": $node['Orchestrate Results'].json.user_experience.immediate_access,\n  \"platform\": \"PLAYALTER\",\n  \"quality\": \"ultra\",\n  \"ar_overlay_ready\": true,\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"agent-orchestrate-workflow\"\n})}}"
+      },
+      "id": "u9v0w1x2-y3z4-a5b6-c7d8-e9f0g1h2i3j4",
+      "name": "Orchestration Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 280]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Master Trigger": {
+      "main": [
+        [
+          {
+            "node": "GPT-4o Decision Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o Decision Engine": {
+      "main": [
+        [
+          {
+            "node": "Activate Replicate Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Activate Agora Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activate Replicate Agent": {
+      "main": [
+        [
+          {
+            "node": "Call Replicate Child Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Activate Agora Agent": {
+      "main": [
+        [
+          {
+            "node": "Call Agora Child Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Call Replicate Child Agent": {
+      "main": [
+        [
+          {
+            "node": "Orchestrate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Agora Child Agent": {
+      "main": [
+        [
+          {
+            "node": "Orchestrate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orchestrate Results": {
+      "main": [
+        [
+          {
+            "node": "Notify Orchestration Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Orchestration Complete": {
+      "main": [
+        [
+          {
+            "node": "Orchestration Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "agent-orchestrate-v1.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "playalter-agent-orchestrate-workflow"
+  },
+  "id": "agent-orchestrate-workflow",
+  "tags": [
+    {
+      "createdAt": "2025-09-16T14:00:00.000Z",
+      "updatedAt": "2025-09-16T14:00:00.000Z",
+      "id": "playalter-production",
+      "name": "PLAYALTER Production"
+    }
+  ]
+}

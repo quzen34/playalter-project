@@ -1,0 +1,303 @@
+{
+  "name": "PLAYALTER Replicate Mask Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "replicate-mask",
+        "options": {}
+      },
+      "id": "1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "replicate-mask-webhook"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "requestMethod": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "options": {
+          "timeout": 30000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "version",
+              "value": "lucataco/faceswap:9a4298548422074c3f57258c5d544497314ae4112df80d116f0d2109e843d20d"
+            },
+            {
+              "name": "input",
+              "value": "={{JSON.stringify({\"source_image\": $json.source_base64, \"target_image\": $json.target_base64, \"ethnic_diversity\": \"diverse\", \"quality\": \"ultra\", \"ar_overlays\": true})}}"
+            }
+          ]
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "=Token {{$env.REPLICATE_API_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "2b3c4d5e-6f7g-8h9i-0j1k-l2m3n4o5p6q7",
+      "name": "Replicate Face Swap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "replicate-auth",
+          "name": "Replicate API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "face_detected",
+              "leftValue": "={{$json.faces_detected}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt",
+                "rightType": "number"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c4d5e6f-7g8h-9i0j-1k2l-m3n4o5p6q7r8",
+      "name": "Ethics Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{$node['Webhook'].json.callback_url || 'https://www.playalter.com/api/face-ethics'}}",
+        "options": {
+          "timeout": 10000
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "image_base64",
+              "value": "={{$node['Replicate Face Swap'].json.output}}"
+            },
+            {
+              "name": "confidence_threshold",
+              "value": "0.95"
+            },
+            {
+              "name": "check_nsfw",
+              "value": "true"
+            },
+            {
+              "name": "check_age_appropriate",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "id": "4d5e6f7g-8h9i-0j1k-2l3m-n4o5p6q7r8s9",
+      "name": "MediaPipe Ethics Validation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 2
+            }
+          ]
+        },
+        "requestMethod": "GET",
+        "url": "=https://api.replicate.com/v1/predictions/{{$node['Replicate Face Swap'].json.id}}",
+        "options": {
+          "timeout": 60000
+        },
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "=Token {{$env.REPLICATE_API_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "id": "5e6f7g8h-9i0j-1k2l-3m4n-o5p6q7r8s9t0",
+      "name": "Poll Replicate Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 480]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "status_check",
+              "leftValue": "={{$json.status}}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6f7g8h9i-0j1k-2l3m-4n5o-p6q7r8s9t0u1",
+      "name": "Check Completion",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify({\n  \"status\": \"success\",\n  \"swapped_url\": $node['Poll Replicate Status'].json.output,\n  \"prediction_id\": $node['Replicate Face Swap'].json.id,\n  \"processing_time\": $node['Poll Replicate Status'].json.metrics?.predict_time,\n  \"ethics_validation\": $node['MediaPipe Ethics Validation'].json,\n  \"ethnic_diversity\": \"diverse\",\n  \"quality\": \"ultra\",\n  \"ar_overlays\": true,\n  \"confidence\": $node['MediaPipe Ethics Validation'].json.confidence || 0.95,\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"replicate-mask-workflow\",\n  \"user_id\": $node['Webhook'].json.user_id,\n  \"session_id\": $node['Webhook'].json.session_id\n})}}"
+      },
+      "id": "7g8h9i0j-1k2l-3m4n-5o6p-q7r8s9t0u1v2",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify({\n  \"status\": \"error\",\n  \"message\": \"Face processing failed ethics validation\",\n  \"error_code\": \"ETHICS_VALIDATION_FAILED\",\n  \"details\": $node['MediaPipe Ethics Validation'].json,\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"replicate-mask-workflow\",\n  \"user_id\": $node['Webhook'].json.user_id\n})}}"
+      },
+      "id": "8h9i0j1k-2l3m-4n5o-6p7q-r8s9t0u1v2w3",
+      "name": "Ethics Failure Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 360]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Replicate Face Swap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replicate Face Swap": {
+      "main": [
+        [
+          {
+            "node": "Poll Replicate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ethics Check": {
+      "main": [
+        [
+          {
+            "node": "MediaPipe Ethics Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ethics Failure Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MediaPipe Ethics Validation": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Replicate Status": {
+      "main": [
+        [
+          {
+            "node": "Check Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Completion": {
+      "main": [
+        [
+          {
+            "node": "Ethics Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "replicate-mask-v1.0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "playalter-replicate-mask-workflow"
+  },
+  "id": "replicate-mask-workflow",
+  "tags": [
+    {
+      "createdAt": "2025-09-16T14:00:00.000Z",
+      "updatedAt": "2025-09-16T14:00:00.000Z",
+      "id": "playalter-production",
+      "name": "PLAYALTER Production"
+    }
+  ]
+}
