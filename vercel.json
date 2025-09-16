@@ -16,6 +16,22 @@
   ],
   "rewrites": [
     {
+      "source": "/api/n8n/replicate-mask",
+      "destination": "https://hooks.n8n.io/webhook/replicate-mask"
+    },
+    {
+      "source": "/api/n8n/agora-stream",
+      "destination": "https://hooks.n8n.io/webhook/agora-stream"
+    },
+    {
+      "source": "/api/n8n/agent-orchestrate",
+      "destination": "https://hooks.n8n.io/webhook/agent-orchestrate"
+    },
+    {
+      "source": "/api/n8n/platform-sync",
+      "destination": "https://hooks.n8n.io/webhook/platform-sync"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "backend/app_enhanced.py"
     }
@@ -25,6 +41,31 @@
     "NODE_ENV": "production"
   },
   "headers": [
+    {
+      "source": "/api/n8n/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With, X-N8N-Webhook-Signature"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
+        }
+      ]
+    },
     {
       "source": "/api/(.*)",
       "headers": [
