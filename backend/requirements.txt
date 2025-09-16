@@ -1,6 +1,58 @@
-Flask==3.0.0
-Flask-CORS==4.0.0
-python-dotenv==1.0.0
-stripe==7.8.0
+# PLAYALTER Backend Dependencies
+# Core Platform Integration Requirements
+
+# Web Framework & API
+flask==3.0.0
+flask-cors==4.0.0
+fastapi==0.105.0
+uvicorn==0.24.0
+gunicorn==22.0.0
+
+# Platform Integrations
+stripe==8.7.0                    # Payment processing
+openai==1.107.3                  # AI capabilities
+replicate==0.25.1                # Face swap AI
+agora-python-server-sdk==1.4.0   # Live streaming
+
+# HTTP & Async Operations
 requests==2.31.0
+httpx==0.25.2
+aiohttp==3.12.15
+aiofiles==23.2.1
+websockets==12.0
+
+# Data Processing & Validation
+pydantic==2.5.0
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Caching & Queue Management
 redis==5.0.1
+celery==5.3.4
+
+# Security & Authentication
+pyjwt==2.8.0
+python-dotenv==1.0.1
+
+# Media Processing
+mediapipe==0.10.8
+opencv-python==4.8.1.78
+pillow==10.1.0
+
+# Testing & Validation (Development)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# Code Quality (Development)
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.7.1
+
+# Monitoring & Logging
+prometheus-client==0.19.0
+structlog==23.2.0
+
+# Additional Platform Utilities
+agora-token-builder==1.0.0       # Agora token generation

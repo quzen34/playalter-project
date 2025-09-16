@@ -12,7 +12,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from typing import Dict, Any, List
 
-load_dotenv()
+# Load environment variables from parent directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +43,8 @@ N8N_API_KEY = os.getenv("N8N_API_KEY")
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://localhost:5678/webhook")
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN")
+REPLICATE_VERCEL_INTEGRATION_ID = os.getenv("REPLICATE_VERCEL_INTEGRATION_ID")
+REPLICATE_VERCEL_TOKEN = os.getenv("REPLICATE_VERCEL_TOKEN")
 AGORA_APP_ID = os.getenv("AGORA_APP_ID")
 AGORA_APP_CERTIFICATE = os.getenv("AGORA_APP_CERTIFICATE")
 
@@ -657,6 +660,10 @@ def face_swap():
             return jsonify({"error": "Both source_base64 and target_base64 are required"}), 400
 
         # Use Replicate API if token is available
+        logger.info(f"REPLICATE_API_TOKEN exists: {bool(REPLICATE_API_TOKEN)}")
+        if REPLICATE_API_TOKEN:
+            logger.info(f"REPLICATE_API_TOKEN length: {len(REPLICATE_API_TOKEN)}")
+            logger.info(f"REPLICATE_API_TOKEN starts with: {REPLICATE_API_TOKEN[:10]}...")
         if REPLICATE_API_TOKEN:
             logger.info("Using Replicate API for face swap")
 
@@ -1180,4 +1187,4 @@ def home():
 
 if __name__ == '__main__':
     logger.info("Starting PLAYALTER Backend with n8n and Stripe integration")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8000)
